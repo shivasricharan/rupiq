@@ -43,5 +43,5 @@ async function beginCloud(){let email=$('syncEmail').value.trim();if(!/^\S+@\S+\
 $('sendSyncLink').onclick=beginCloud;
 $('syncAuth').querySelector('.actions').insertAdjacentHTML('beforeend','<button class="secondary" id="skipSync">Keep on this device</button>');$('skipSync').onclick=()=>hide('syncAuth');
 let wrapClick=id=>{let old=$(id).onclick;$(id).onclick=e=>{old&&old(e);pushCloud()}};['start','saveSettings','saveAlloc','saveImport'].forEach(wrapClick);let oldExpense=$('expenseForm').onsubmit;$('expenseForm').onsubmit=e=>{oldExpense(e);pushCloud()};
-rupiqCloud.auth.onAuthStateChange((_,s)=>{if(s&&s.user)activateCloud(s.user)});rupiqCloud.auth.getSession().then(({data:{session}})=>{if(session)activateCloud(session.user);else{hide('onboarding');show('syncAuth')}});
+rupiqCloud.auth.onAuthStateChange((_,s)=>{if(s&&s.user)activateCloud(s.user)});rupiqCloud.auth.getSession().then(({data:{session}})=>{if(session)activateCloud(session.user);else if(!state.name)show('onboarding')});
 </script></body></html>
