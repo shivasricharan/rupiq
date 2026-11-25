@@ -19,3 +19,8 @@
   for = "/index.html"
   [headers.values]
     Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/src/vendor/*.mjs"
+  [headers.values]
+    Content-Type = "text/javascript; charset=utf-8"

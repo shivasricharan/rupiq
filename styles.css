@@ -12,7 +12,6 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer}
 .muted{color:var(--muted)}.tiny{font-size:.8rem}.center{text-align:center}.grow{flex:1;min-width:0}.neg{color:var(--warn)}.in{color:var(--good)}.sr{position:absolute;left:-9999px}
 .eyebrow{color:var(--muted);font-size:.9rem;margin:0}.accent{color:var(--pri)}
 .layout{max-width:640px;margin:0 auto;padding:0 16px calc(var(--tab) + 28px + env(safe-area-inset-bottom))}
-.side{display:none}
 .content{padding-top:max(14px,env(safe-area-inset-top))}
 .page-h{margin:8px 0 6px}
 .card{background:var(--card);border-radius:var(--r);padding:16px;margin:12px 0;box-shadow:var(--shadow);border:1px solid var(--line)}
@@ -84,10 +83,8 @@ button,input,select{font:inherit;color:inherit}button{cursor:pointer}
 /* onboarding */
 .onb{min-height:100vh;display:grid;place-items:center;padding:20px}.onb-card{width:100%;max-width:460px}
 .onb-card h1{font-size:1.9rem;margin:14px 0 10px}.points{list-style:none;padding:0;margin:18px 0 26px;display:grid;gap:14px}.points li{padding-left:2px}
-@media(min-width:900px){
- .layout{max-width:1080px;display:grid;grid-template-columns:220px minmax(0,640px);gap:40px;padding:0 24px 40px;justify-content:center}
- .side{display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;padding:28px 0}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.3rem;margin-bottom:18px}.brand .logo{width:36px;height:36px;border-radius:10px}
- .side nav{display:grid;gap:4px;margin-bottom:12px}.side .nav-item{flex-direction:row;gap:12px;font-size:1rem;padding:10px 12px;border-radius:12px;justify-content:flex-start}.side .nav-item.on{background:var(--pri-soft)}
- .tabbar{display:none}#toast-root{bottom:24px}.sheet{bottom:auto;top:50%;transform:translateY(-50%);border-radius:24px;max-height:86vh;left:0;right:0}.sheet{animation:none}
-}
+/* Rupiq is phone-first: on wide screens keep a phone-width column and show a QR to open it on a phone */
+.deskhint{display:none}.qr{width:180px;height:180px;border-radius:12px;display:block;margin:12px 0}.steps{padding-left:1.2rem;margin:10px 0}.steps li{margin:8px 0}
+@media(min-width:700px){.layout{max-width:480px}.tabbar{left:50%;right:auto;width:480px;transform:translateX(-50%);border-radius:18px 18px 0 0}#toast-root{bottom:calc(var(--tab) + 18px)}}
+@media(min-width:1000px){.deskhint{display:block;position:fixed;top:40px;left:calc(50% + 280px);width:220px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}.deskhint .logo{width:40px;height:40px}.deskhint h2{font-size:1rem;margin:8px 0 4px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

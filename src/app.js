@@ -4,6 +4,8 @@ import { todayIST, ymOf, addMonths, monthLabel, dayLabel, isValidDate, clampDay 
 import { emptyState, normalize, demoState, uid, PAY_METHODS } from './data.js';
 import { monthSummary, insights, filterTxns, toCSV, budgetFor, monthTxns, dataSpanDays } from './calc.js';
 import * as store from './store.js';
+import { encode } from './vendor/uqr.mjs';
+import { inAppBrowser, isIOS, isStandalone } from './env.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -113,11 +115,33 @@ function route() { const r = (location.hash.replace(/^#\/?/, '') || 'home').spli
 function shell(r, inner) {
   const link = ([id, label, icon]) => `<a class="nav-item ${r === id ? 'on' : ''}" href="#/${id}" ${r === id ? 'aria-current="page"' : ''}>${ico(icon)}<span>${label}</span></a>`;
   return `<div class="layout">
-    <aside class="side"><div class="brand">${LOGO}<span>Rupiq</span></div><nav aria-label="Main">${NAV.map(link).join('')}</nav>
-      <button class="btn primary block" data-act="add">${ico('plus')} Add transaction</button></aside>
     <div class="content"><div id="banners"></div><main id="view" tabindex="-1">${inner}</main></div>
+    <aside class="deskhint" aria-label="Open on your phone">${LOGO}<h2>Rupiq is made for your phone</h2><p class="muted">Scan to open it on your phone. Your data stays on whichever device you use it on.</p>${qrSvg(location.origin + location.pathname)}</aside>
     <nav class="tabbar" aria-label="Main">${link(NAV[0])}${link(NAV[1])}
       <button class="fab" data-act="add" aria-label="Add transaction">${ico('plus')}</button>${link(NAV[2])}${link(NAV[3])}</nav></div>`;
+}
+
+/* ---------- QR / install helpers ---------- */
+let qrCache = '';
+function qrSvg(text) {
+  if (!qrCache || qrCache.t !== text) {
+    try {
+      const r = encode(text, { ecc: 'M', border: 1 }); const mx = r.data; const n = r.size; let d = '';
+      mx.forEach((row, y) => row.forEach((on, x) => { if (on) d += `M${x} ${y}h1v1h-1z`; }));
+      qrCache = { t: text, v: `<svg class="qr" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR code to open Rupiq on your phone"><rect width="${n}" height="${n}" fill="#fff"/><path d="${d}" fill="#111"/></svg>` };
+    } catch { qrCache = { t: text, v: '' }; }
+  }
+  return qrCache.v;
+}
+const UA = () => navigator.userAgent || '';
+const needsInstall = () => !isStandalone() && /Android|iPhone|iPad|iPod|Mobile/i.test(UA());
+function installHelpHtml() {
+  const ios = isIOS(UA(), navigator.maxTouchPoints);
+  const steps = ios
+    ? '<ol class="steps"><li>Open Rupiq in <b>Safari</b> (not inside WhatsApp or another app).</li><li>Tap the <b>Share</b> button (square with an arrow).</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>From now on, <b>always open Rupiq from that icon</b>.</li></ol>'
+    : '<ol class="steps"><li>Open Rupiq in <b>Chrome</b>.</li><li>Tap the <b>⋮ menu</b> → <b>Install app</b> (or <b>Add to Home screen</b>).</li><li>From now on, <b>always open Rupiq from that icon</b>.</li></ol>';
+  return `<p>Your records are saved inside this browser on this phone. Using the home-screen icon every time makes sure you always come back to the same data.</p>${steps}
+    ${ios ? '<p class="hint">On iPhone the icon keeps its own separate storage. If you already added expenses in Safari, export a backup first and restore it inside the icon (More → Restore).</p>' : ''}`;
 }
 
 /* ---------- Home ---------- */
@@ -156,6 +180,8 @@ function viewHome() {
     <div class="stat"><p class="label">${s.budgetTotal ? (s.remaining < 0 ? 'Over budget' : 'Budget left') : 'Income − spent'}</p><p class="num ${(s.budgetTotal ? s.remaining : s.net) < 0 ? 'neg' : ''}">${s.budgetTotal ? m(Math.abs(s.remaining)) : (s.net < 0 ? '−' : '') + m(Math.abs(s.net))}</p></div></section>`;
 
   if (mode === 'main' && exportDue()) h += `<section class="card nudge"><p><b>Back up your data.</b> Everything lives only on this device. A quick export keeps it safe if you ever switch phones or clear your browser.</p><div class="row"><button class="btn small primary" data-act="export-json">Export backup</button><button class="btn small" data-act="snooze-export">Later</button></div></section>`;
+
+  if (mode === 'main' && needsInstall() && !(state.prefs.installSnooze > Date.now())) h += `<section class="card nudge"><p><b>Add Rupiq to your home screen.</b> It keeps your data in one place and opens like a normal app.</p><div class="row"><button class="btn small primary" data-act="install-help">Show me how</button><button class="btn small" data-act="snooze-install">Later</button></div></section>`;
 
   // Insights
   h += `<section class="card"><h2 class="sec">Worth a look</h2>`;
@@ -289,7 +315,7 @@ function viewMore() {
   h += `<section class="card"><h2 class="sec">Privacy</h2><ul class="plain"><li>No account, no sign-up, no servers: your records are never uploaded.</li><li>No analytics, trackers or ads. Rupiq makes no network requests with your data.</li><li>You own your data: export it any time, or erase it below.</li></ul></section>`;
   h += `<section class="card"><h2 class="sec">${demo ? 'Demo mode' : 'Try it out'}</h2>${demo ? `<p class="muted">You're looking at sample data. Your real data is untouched.</p><button class="btn primary" data-act="exit-demo">Exit demo</button>` : `<p class="muted">Want to see Rupiq with some numbers in it? Sample data opens separately and never mixes with yours.</p><button class="btn" data-act="start-demo">Explore with sample data</button>`}</section>`;
   if (ui.installEvt) h += `<section class="card"><h2 class="sec">Install</h2><p class="muted">Add Rupiq to your home screen for one-tap access, even offline.</p><button class="btn" data-act="install">Install Rupiq</button></section>`;
-  else h += `<section class="card"><h2 class="sec">Install</h2><p class="muted">On iPhone: Share → Add to Home Screen. On Android: browser menu → Install app.</p></section>`;
+  else if (!isStandalone()) h += `<section class="card"><h2 class="sec">Add to home screen</h2><p class="muted">Keeps your data in one place and opens like an app.</p><button class="btn" data-act="install-help">Show me how</button></section>`;
   if (!demo) h += `<section class="card danger"><h2 class="sec">Delete all my data</h2><p class="muted">Erases every transaction, budget and setting from this device. This can't be undone.</p><button class="btn danger" data-act="wipe">Delete everything…</button></section>`;
   h += `<p class="tiny muted center">Rupiq v1.0 · Made in India · Your data stays with you</p>`;
   return h;
@@ -309,6 +335,7 @@ async function afterMore() {
 function render() {
   const app = $('#app');
   if (ui.loadError) return renderLoadError(app);
+  if (!state.prefs.onboarded && mode !== 'demo' && !ui.inAppOk && inAppBrowser(UA())) return renderInAppGate(app);
   if (!state.prefs.onboarded && mode !== 'demo') return renderOnboarding(app);
   const r = route();
   const body = { home: viewHome, history: viewHistory, budget: viewBudget, more: viewMore }[r]();
@@ -328,6 +355,14 @@ function renderLoadError(app) {
     <div class="stack"><button class="btn primary" data-act="reload">Reload</button></div></div></div>`;
 }
 
+function renderInAppGate(app) {
+  const ios = isIOS(UA(), navigator.maxTouchPoints);
+  app.innerHTML = `<div class="onb"><div class="onb-card">${LOGO}<h1>Open Rupiq in your browser</h1>
+    <p>You're viewing this inside another app. It keeps its own separate storage, so anything you add here <b>won't be there</b> when you open Rupiq in ${ios ? 'Safari' : 'Chrome'} later.</p>
+    <ol class="steps"><li>Tap <b>⋮</b> or the <b>share</b> icon in the corner.</li><li>Choose <b>Open in ${ios ? 'Safari' : 'Chrome / Browser'}</b>.</li></ol>
+    <div class="stack"><button class="btn primary big" data-act="copy-link">Copy link</button><button class="btn" data-act="inapp-ok">Continue here anyway</button></div></div></div>`;
+}
+
 /* ---------- onboarding ---------- */
 function renderOnboarding(app) {
   const o = onboard;
@@ -338,6 +373,9 @@ function renderOnboarding(app) {
     inner = `${LOGO}<h1>Know where your money goes.<br><span class="accent">Before it's gone.</span></h1>
       <ul class="points"><li><b>Add spending in seconds</b> — amount, category, done.</li><li><b>See what's left in your budget</b> without spreadsheets.</li><li><b>Private by design</b> — your data stays on your phone. No sign-up.</li></ul>
       <div class="stack"><button class="btn primary big" data-act="ob-next">Get started</button><button class="btn" data-act="start-demo">Look around with sample data</button></div>`;
+  } else if (o.step === 'install') {
+    inner = `<p class="eyebrow">Before you start</p><h1>Add Rupiq to your home screen</h1>${installHelpHtml()}
+      <div class="stack">${ui.installEvt ? '<button class="btn primary big" data-act="install">Install Rupiq</button>' : ''}<button class="btn ${ui.installEvt ? '' : 'primary big'}" data-act="ob-skip-install">I'll do it later — continue</button><button class="btn" data-act="ob-back">Back</button></div>`;
   } else if (o.step === 1) {
     inner = `<p class="eyebrow">Step 1 of 3</p><h1>A little about you</h1><p class="muted">Everything here is optional and can be changed later.</p>
       <label class="field"><span>What should we call you?</span><input id="ob-name" class="input" maxlength="40" value="${esc(o.name)}" placeholder="Your first name" autocomplete="given-name"></label>
@@ -650,9 +688,14 @@ const actions = {
   'export-json': exportJSON, 'export-csv': exportCSV, import: () => $('#file').click(), 'restore-safety': restoreSafety, wipe: openWipe,
   'snooze-export': () => commit(s => { s.prefs.snoozeUntil = Date.now() + 7 * 86400000; }),
   'start-demo': enterDemo, 'exit-demo': exitDemo,
-  install: async () => { const e = ui.installEvt; if (!e) return; e.prompt(); await e.userChoice; ui.installEvt = null; render(); },
-  'ob-next': () => { obCapture(); onboard.step++; render(); },
-  'ob-back': () => { obCapture(); onboard.step--; render(); },
+  install: async () => { const e = ui.installEvt; if (!e) return; closeSheet(); e.prompt(); await e.userChoice; ui.installEvt = null; render(); },
+  'ob-next': () => { obCapture(); onboard.step = onboard.step === 0 ? (needsInstall() ? 'install' : 1) : onboard.step + 1; render(); },
+  'ob-back': () => { obCapture(); onboard.step = onboard.step === 'install' ? 0 : onboard.step === 1 && needsInstall() ? 'install' : onboard.step - 1; render(); },
+  'ob-skip-install': () => { onboard.step = 1; render(); },
+  'install-help': () => openSheet('Add to home screen', installHelpHtml() + (ui.installEvt ? '<button class="btn primary big block" data-act="install">Install Rupiq</button>' : '')),
+  'snooze-install': () => commit(s => { s.prefs.installSnooze = Date.now() + 14 * 86400000; }),
+  'copy-link': async () => { try { await navigator.clipboard.writeText(location.href); toast('Link copied. Paste it in your browser.'); } catch { toast('Copy the address from the menu instead.'); } },
+  'inapp-ok': () => { ui.inAppOk = true; render(); },
   'ob-cat': el => { const id = el.dataset.id; if (onboard.picked.has(id)) onboard.picked.delete(id); else onboard.picked.add(id); el.classList.toggle('on', onboard.picked.has(id)); el.setAttribute('aria-pressed', onboard.picked.has(id)); },
   'ob-finish': async () => {
     const o = onboard; const tgt = parseAmount(o.target);

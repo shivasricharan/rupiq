@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { parseAmount, fmt, toInputString } from '../src/money.js';
 import { todayIST, addMonths, daysInMonth, weekStart, isValidDate, dayLabel } from '../src/dates.js';
 import { emptyState, normalize, demoState } from '../src/data.js';
+import { inAppBrowser, isIOS } from '../src/env.js';
 import { monthSummary, budgetFor, insights, filterTxns, toCSV } from '../src/calc.js';
 
 const tx = (o) => ({ id: Math.random().toString(36).slice(2), type: 'expense', cat: 'groceries', note: '', pay: 'UPI', created: null, updated: null, ...o });
@@ -126,4 +127,13 @@ test('CSV neutralises spreadsheet formulas and quotes', () => {
   assert.ok(csv.includes("'=HYPERLINK"));
   assert.ok(csv.includes('"a,b"'));
   assert.ok(csv.includes('5.50'));
+});
+
+test('in-app browser / iOS detection', () => {
+  assert.ok(inAppBrowser('Mozilla/5.0 (Linux; Android 13; wv) AppleWebKit/537 Chrome/120 Mobile Safari/537 ; wv)'));
+  assert.ok(inAppBrowser('Mozilla/5.0 (iPhone) AppleWebKit Mobile/15E148 Instagram 300.0'));
+  assert.ok(inAppBrowser('Mozilla/5.0 (Linux; Android 13) [FB_IAB/FB4A;FBAV/450.0]'));
+  assert.ok(!inAppBrowser('Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36'));
+  assert.ok(!inAppBrowser('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) AppleWebKit/605 Version/17.0 Mobile/15E148 Safari/604.1'));
+  assert.ok(isIOS('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)')); assert.ok(!isIOS('Mozilla/5.0 (Linux; Android 13)'));
 });

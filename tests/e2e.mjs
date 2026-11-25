@@ -82,5 +82,23 @@ ok('no horizontal overflow at 320px on all screens');
 await p.evaluate(() => { location.hash = '#/more'; }); await sleep(300); await p.click('[data-act=start-demo]'); await sleep(500);
 assert.ok(await p.$('.banner.demo')); await p.click('[data-act=exit-demo]'); await sleep(500);
 assert.equal((await state()).txns.length, 2); ok('demo mode is labelled and never touches real data');
+
+// 12 Install step on Android Chrome UA, in-app-browser gate, desktop QR panel
+const ANDROID = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36';
+const mk = async (ua, vp) => { const c = await b.createBrowserContext(); const q = await c.newPage(); await q.setUserAgent(ua); await q.setViewport(vp); return q; };
+let q = await mk(ANDROID, { width: 390, height: 800, isMobile: true, hasTouch: true });
+await q.goto(URL_, { waitUntil: 'networkidle0' }); await q.click('[data-act=ob-next]');
+assert.match(await q.$eval('.onb-card', e => e.textContent), /Add Rupiq to your home screen/); ok('phone browser: onboarding starts with add-to-home-screen step');
+await q.click('[data-act=ob-skip-install]'); assert.ok(await q.$('#ob-name')); await q.click('[data-act=ob-back]'); assert.match(await q.$eval('.onb-card', e => e.textContent), /home screen/); ok('install step can be skipped and navigated back');
+await q.screenshot({ path: '/tmp/install-step.png' });
+q = await mk(ANDROID + ' [FB_IAB/FB4A;FBAV/450.0]', { width: 390, height: 800, isMobile: true, hasTouch: true });
+await q.goto(URL_, { waitUntil: 'networkidle0' });
+assert.match(await q.$eval('.onb-card', e => e.textContent), /Open Rupiq in your browser/); ok('in-app browser (Facebook/WhatsApp-style) is warned before any data is entered');
+await q.screenshot({ path: '/tmp/inapp-gate.png' }); await q.click('[data-act=inapp-ok]'); assert.ok(await q.$('[data-act=ob-next]')); ok('"continue anyway" proceeds to onboarding');
+q = await mk('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36', { width: 1280, height: 800 });
+await q.goto(URL_, { waitUntil: 'networkidle0' }); await q.click('[data-act=start-demo]'); await sleep(500);
+const dims = await q.evaluate(() => ({ w: document.querySelector('.layout').getBoundingClientRect().width, qr: !!document.querySelector('.deskhint .qr path'), vis: getComputedStyle(document.querySelector('.deskhint')).display, ov: document.documentElement.scrollWidth - innerWidth }));
+assert.ok(dims.w <= 480 && dims.qr && dims.vis === 'block' && dims.ov <= 0, JSON.stringify(dims)); ok('desktop: phone-width column + QR panel, no overflow');
+await q.screenshot({ path: '/tmp/desktop.png' });
 assert.deepEqual(errs, [], 'console errors: ' + errs.join(' | ')); ok('no console errors');
 await b.close(); srv.close(); console.log(`\nAll ${n} e2e checks passed`);
