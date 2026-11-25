@@ -1,0 +1,4 @@
+{ "name": "rupiq", "version": "1.0.0", "private": true, "type": "module",
+  "description": "Rupiq — private, local-first money tracker (static PWA, no backend)",
+  "scripts": { "start": "node scripts/serve.js", "test": "node --test tests/unit.test.js", "test:e2e": "node tests/e2e.mjs", "build": "node scripts/build.js" },
+  "devDependencies": { "puppeteer-core": "^24.0.0" } }
